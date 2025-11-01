@@ -1,0 +1,276 @@
+{% extends "index.html" %}
+
+{% block content %}
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>About Us • LeafGuard</title>
+
+    <style>
+        :root {
+            /* Light mode */
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #16a34a;
+            --primary-600: #15803d;
+            --border: rgba(0, 0, 0, 0.08);
+            --radius: 16px;
+            --shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            /* Dark mode */
+            --bg: #0b0b0b;
+            --card: #111827;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --primary: #22c55e;
+            --primary-600: #16a34a;
+            --border: rgba(255, 255, 255, 0.08);
+            --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.25rem 4rem;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 0.3px;
+        }
+
+        .tag {
+            font-size: 0.75rem;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 2px 10px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 1.8rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.75rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin: 0 0 0.5rem;
+            font-weight: 700;
+        }
+
+        .lead {
+            color: var(--muted);
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .about-grid {
+            display: grid;
+            gap: 1.8rem;
+        }
+
+        @media (min-width: 900px) {
+            .about-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+        }
+
+        .about-section h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .about-section p,
+        .about-section li {
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .list {
+            list-style: disc;
+            padding-left: 1.2rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            margin-top: 0.5rem;
+        }
+
+        [data-theme="dark"] .badge {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.25s ease, transform 0.15s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-600);
+            transform: translateY(-2px);
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 999px;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.05);
+            transform: rotate(10deg);
+        }
+
+        [data-theme="dark"] .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <main>
+            <section class="card">
+                <h1 class="themed-title">
+                    <span style="color: var(--text)">About Us</span>
+                </h1>
+                <p class="lead">
+                    Learn who we are, what motivates us, and how this project was built.
+                </p>
+            </section>
+
+            <section class="about-grid">
+                <div class="card about-section">
+                    <h3>Greetings</h3>
+                    <p>
+                        We are a team of four students from the Hong Kong Academy for Gifted Education,
+                        enrolled in a course offered by the Department of Electrical Engineering
+                        at City University of Hong Kong.
+                    </p>
+                    <span class="badge">HKAGE • CityU EE</span>
+                </div>
+
+                <div class="card about-section">
+                    <h3>What motivated us to start this project</h3>
+                    <p>
+                        Hunger remains a global challenge. Our research shows that plant diseases can
+                        reduce the world’s food supply by up to 40%. We hope to contribute by building
+                        tools that help diagnose plant diseases and reduce preventable losses.
+                    </p>
+                </div>
+
+                <div class="card about-section">
+                    <h3>Our project</h3>
+                    <p>
+                        We built a system that lets users upload photos of plant leaves. The system
+                        analyzes the image to detect potential diseases and then provides practical
+                        guidance on how to address them.
+                    </p>
+                </div>
+
+                <div class="card about-section">
+                    <h3>Models and data</h3>
+                    <ul class="list">
+                        <li>Object detection and disease classification using YOLO, EfficientNet, and ResNet.</li>
+                        <li>Trained and evaluated with open-source datasets, including PlantVillage and PlantDoc from Kaggle.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <footer>
+                <a href="detection.html">
+                    <button class="btn-primary" type="button">Back to Detection</button>
+                </a>
+            </footer>
+        </main>
+    </div>
+</body>
+{% endblock %}

@@ -1,0 +1,313 @@
+{% extends "index.html" %}
+
+{% block content %}
+<style>
+    body {
+        padding-top: 70px;
+        background: var(--bg-gradient);
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        color: var(--text-color);
+    }
+
+    .centered-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+    }
+
+    .upload-section {
+        background: var(--panel-bg);
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        padding: 2rem;
+        text-align: center;
+        width: 100%;
+        max-width: 700px;
+        border: 1px solid var(--border);
+    }
+
+    .upload-section label {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: block;
+        color: var(--accent);
+    }
+
+    input[type="file"] {
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border);
+    }
+
+    #preview-img {
+        display: none;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border);
+        margin-top: 1rem;
+        padding: 4px;
+        max-height: 300px;
+        object-fit: contain;
+        background-color: var(--card-bg);
+    }
+
+    h2 {
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        background-color: var(--accent);
+        border-radius: 50%;
+        padding: 10px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+        color: var(--text-color);
+    }
+
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-img-top {
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        background-color: var(--panel-bg);
+        padding: 10px;
+    }
+
+    .card-title {
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .table {
+        background: var(--panel-bg);
+        color: var(--text-color);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .table th,
+    .table td {
+        vertical-align: middle;
+        text-align: center;
+        border-color: var(--border);
+    }
+
+    .analyse-btn {
+        background-color: var(--success);
+        color: #fff;
+        border: none;
+        transition: background-color 0.2s ease;
+    }
+
+    .analyse-btn:hover {
+        background-color: var(--accent-600);
+    }
+
+    .analysis-result {
+        background: var(--panel-bg);
+        border-left: 4px solid var(--accent);
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        color: var(--text-color);
+    }
+
+    .form-control.w-auto {
+        border-radius: 0.5rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border);
+    }
+
+    .btn-success {
+        background-color: var(--success);
+        border-radius: 0.5rem;
+        border: none;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background-color: var(--accent-600);
+    }
+
+    label.form-label {
+        color: var(--accent);
+    }
+
+    .text-muted {
+        color: var(--muted) !important;
+    }
+
+    .text-success {
+        color: var(--accent) !important;
+    }
+
+    .text-danger {
+        color: var(--danger) !important;
+    }
+
+</style>
+
+<script>
+    $(document).ready(function () {
+        $(".analyse-btn").on("click", function (e) {
+            e.preventDefault();
+            var button = $(this);
+            var classStr = button.attr("class") || "";
+            var datumMatch = classStr.match(/btn(\d+)/);
+            var pMatch = classStr.match(/btn-s-(\d+)/);
+            var datumIndex = datumMatch ? datumMatch[1] : "0";
+            var pIndex = pMatch ? pMatch[1] : "0";
+            var prediction = button.data("pred");
+            var resultDiv = button.closest(".card-body").find(".analysis-result.analysis-" + datumIndex + ".analysis-s-" + pIndex);
+            resultDiv.html("<p>Loading analysis...</p>");
+
+            $.ajax({
+                url: `/analyze/${prediction}`,
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ prediction: prediction }),
+                success: function (response) {
+                    resultDiv.html("<h6>Analysis:</h6><p>" + response + "</p>");
+                    $.ajax({
+                        url: "/save",
+                        method: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify({
+                            datumIndex: parseInt(datumIndex, 10),
+                            pIndex: parseInt(pIndex, 10),
+                            pred: response
+                        }),
+                        success: function () {
+                            resultDiv.append("<div class='text-success mt-2'>Saved.</div>");
+                        },
+                        error: function () {
+                            resultDiv.append("<div class='text-danger mt-2'>Error saving analysis.</div>");
+                        }
+                    });
+                },
+                error: function () {
+                    resultDiv.html("<p class='text-danger'>Error retrieving analysis.</p>");
+                }
+            });
+        });
+
+        var fileInput = $('input[name="img"]');
+        fileInput.on('change', function () {
+            var file = this.files && this.files[0];
+            var img = $('#preview-img');
+            if (!file) {
+                img.hide().attr('src', '');
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                img.attr('src', e.target.result).fadeIn();
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+</script>
+
+<div class="container centered-content">
+    <div class="upload-section">
+        <form method="POST" enctype="multipart/form-data">
+            <label for="img">📁 Upload an image for prediction</label>
+            <input name="img" type="file" accept=".jpg,.png,.jpeg" class="form-control mb-3">
+            <button type="submit" class="btn btn-success px-4">Predict</button>
+            <img id="preview-img" src="" alt="Preview">
+        </form>
+    </div>
+
+    <h2 class="text-center mb-4">Uploaded Predictions</h2>
+
+    {% set quan = quan %}
+    {% if data and data|length > 0 %}
+    <div id="predictionCarousel" class="carousel slide" data-bs-wrap="false">
+        <div class="carousel-inner">
+            {% for i in range(0, data|length, quan) %}
+            <div class="carousel-item {% if i == 0 %}active{% endif %}">
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+
+                    {% for datum in data[i:i+quan] %}
+                    {% set datum_index = i + loop.index0 %}
+                    <div class="card">
+                        <img src="{{ datum.file_url }}" class="card-img-top mx-auto d-block" alt="Uploaded image" style="max-width: 20rem;">
+                        <br>
+                        <img src="{{ datum.annotated_url }}" class="card-img-top mx-auto d-block" alt="Annotated image" style="max-width: 20rem;">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Predictions</h5>
+                            <table class="table table-bordered text-center table-success">
+                                <thead>
+                                    <tr>
+                                        <th>Most likely</th>
+                                        <th>Second</th>
+                                        <th>Third</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        {% for p in datum.prediction %}
+                                        <td>{{ p }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr>
+                                        {% for p in range(3) %}
+                                        <th>
+                                            <p>Confidence: {{ '%.2f' | format(datum.prediction_data[p]["confidence"] * 100) }}%</p>
+                                            <img src="{{ datum.prediction_data[p]['crop_url'] }}">
+                                            <button
+                                                class="analyse-btn btn btn-success btn{{ datum_index }} btn-s-{{ p }}"
+                                                data-pred="{{ datum.prediction[p] }}">Analyse</button>
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </tbody>
+                            </table>
+                            {% for a in range(3) %}
+                            <div class="analysis-result text-start mt-2 analysis-{{ datum_index }} analysis-s-{{ a }}">
+                                <h3>{{ datum.prediction[a] }}</h3>
+                                {{ datum.analyses[a] | safe }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button class="carousel-control-prev" type="button" data-bs-target="#predictionCarousel" data-bs-slide="prev"
+            aria-label="Previous">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#predictionCarousel" data-bs-slide="next"
+            aria-label="Next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+
+    <form method="GET" action="/predict" class="mb-4 d-flex gap-2 justify-content-center align-items-center">
+        <label for="carousel-quantity" class="form-label mb-0 fw-semibold">Show how many cards at once:</label>
+        <input id="carousel-quantity" name="quan" type="number" min="1" value="{{ quan }}" class="form-control w-auto">
+        <button type="submit" class="btn btn-success">Set</button>
+    </form>
+    {% else %}
+    <p class="text-center text-muted">No predictions yet. Upload an image above to get started!</p>
+    {% endif %}
+</div>
+{% endblock %}
