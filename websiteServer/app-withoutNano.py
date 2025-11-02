@@ -57,10 +57,12 @@ PREDICTIONS_FOLDER = os.path.join(app.root_path, 'data/predictions.json')
 
 model = YOLO('website/static/best.pt')
 
+# Returns JSON of historical predictions
 def load_predictions():
     with open(PREDICTIONS_FOLDER, 'r') as f:
         return json.load(f)
-    
+
+# Writes a new prediction to predictions.json
 def save_predictions(entry):
     predictions = load_predictions()
     predictions.append(entry)
@@ -70,7 +72,8 @@ def save_predictions(entry):
         else:
             ordered = [entry] + predictions
         json.dump(ordered, f)
-        
+
+# Main code; uses the model to predict both leaf location and type of disease
 def predict_model(index, path):
     results = model.predict(os.path.join(path, "base.jpg"))
     save_path = os.path.join(path, "predictions")
@@ -87,6 +90,7 @@ def predict_model(index, path):
     three_most_confident_values = []
     three_most_confident_files = []
     for i in range(len(boxes)):
+        # Crops leaves from bounding boxes
         x1, y1, x2, y2 = map(int, boxes.xyxy[i])
         conf = float(boxes.conf[i])
         cls_id = int(boxes.cls[i])
@@ -209,4 +213,5 @@ def index():
     return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)))
 
 if __name__ == '__main__':
+
     app.run(debug=True)
