@@ -2,6 +2,7 @@
 
 {% block content %}
 <style>
+    /* CSS styling */
     body {
         padding-top: 70px;
         background: var(--bg-gradient);
@@ -172,6 +173,7 @@
             var resultDiv = button.closest(".card-body").find(".analysis-result.analysis-" + datumIndex + ".analysis-s-" + pIndex);
             resultDiv.html("<p>Loading analysis...</p>");
 
+            // Send the URL to /analyze/<prediction> and get analysis from generative AI server-side using AJAX
             $.ajax({
                 url: `/analyze/${prediction}`,
                 method: "POST",
@@ -179,6 +181,7 @@
                 data: JSON.stringify({ prediction: prediction }),
                 success: function (response) {
                     resultDiv.html("<h6>Analysis:</h6><p>" + response + "</p>");
+                    // Send URL to /save to save analyses to predictions.json using AJAX
                     $.ajax({
                         url: "/save",
                         method: "POST",
@@ -202,6 +205,7 @@
             });
         });
 
+        // Image preview
         var fileInput = $('input[name="img"]');
         fileInput.on('change', function () {
             var file = this.files && this.files[0];
@@ -231,17 +235,20 @@
 
     <h2 class="text-center mb-4">Uploaded Predictions</h2>
 
+    <!-- Carousel that shows historical predictions -->
     {% set quan = quan %}
     {% if data and data|length > 0 %}
     <div id="predictionCarousel" class="carousel slide" data-bs-wrap="false">
         <div class="carousel-inner">
+            <!-- Loops through data, incrementing quan -->
             {% for i in range(0, data|length, quan) %}
             <div class="carousel-item {% if i == 0 %}active{% endif %}">
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
-
+                    <!-- Loops through datum quan times (gets quan historical predictions) -->
                     {% for datum in data[i:i+quan] %}
                     {% set datum_index = i + loop.index0 %}
                     <div class="card">
+                        <!-- Showing base image / annotated image -->
                         <img src="{{ datum.file_url }}" class="card-img-top mx-auto d-block" alt="Uploaded image" style="max-width: 20rem;">
                         <br>
                         <img src="{{ datum.annotated_url }}" class="card-img-top mx-auto d-block" alt="Annotated image" style="max-width: 20rem;">
@@ -257,6 +264,7 @@
                                 </thead>
                                 <tbody>
                                     <tr>
+                                        <!-- Show text predictions (predicted classes) -->
                                         {% for p in datum.prediction %}
                                         <td>{{ p }}</td>
                                         {% endfor %}
@@ -265,18 +273,22 @@
                                         {% for p in range(3) %}
                                         <th>
                                             <p>Confidence: {{ '%.2f' | format(datum.prediction_data[p]["confidence"] * 100) }}%</p>
+                                            <!-- Shows one cropped image of a diagnosed leaf per prediction -->
                                             <img src="{{ datum.prediction_data[p]['crop_url'] }}">
                                             <button
                                                 class="analyse-btn btn btn-success btn{{ datum_index }} btn-s-{{ p }}"
                                                 data-pred="{{ datum.prediction[p] }}">Analyse</button>
+                                            <!-- Saves classes as btn1, btn-s-1 to save prediction no. and which prediction out of three it is -->
                                         </th>
                                         {% endfor %}
                                     </tr>
                                 </tbody>
                             </table>
                             {% for a in range(3) %}
+                            <!-- Again, saves as analysis1 and analysis-s-1 for reasons identical to above -->
                             <div class="analysis-result text-start mt-2 analysis-{{ datum_index }} analysis-s-{{ a }}">
                                 <h3>{{ datum.prediction[a] }}</h3>
+                                <!-- Since the AI returns raw HTML, we use |save to stop the text from being enveloped in quotation marks -->
                                 {{ datum.analyses[a] | safe }}
                             </div>
                             {% endfor %}
@@ -289,6 +301,7 @@
             {% endfor %}
         </div>
 
+        <!-- Controls the carousel -->
         <button class="carousel-control-prev" type="button" data-bs-target="#predictionCarousel" data-bs-slide="prev"
             aria-label="Previous">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -300,7 +313,8 @@
             <span class="visually-hidden">Next</span>
         </button>
     </div>
-
+    
+    <!-- Sets the value of quan; or how many cards are shown at once. -->
     <form method="GET" action="/predict" class="mb-4 d-flex gap-2 justify-content-center align-items-center">
         <label for="carousel-quantity" class="form-label mb-0 fw-semibold">Show how many cards at once:</label>
         <input id="carousel-quantity" name="quan" type="number" min="1" value="{{ quan }}" class="form-control w-auto">
@@ -311,3 +325,4 @@
     {% endif %}
 </div>
 {% endblock %}
+
