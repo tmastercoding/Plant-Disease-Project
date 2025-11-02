@@ -1,3 +1,5 @@
+<!-- Base HTML file extended by other templates -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +11,7 @@
     <title>Image Prediction Web App</title>
 
     <style>
+        /* CSS styling with light/dark mode */
         :root{
             --bg: #ffffff;
             --bg-gradient: linear-gradient(135deg, #ffffff, #f3f4f6);
@@ -49,6 +52,7 @@
     </style>
 </head>
 <body>
+    <!-- Navigation bar -->
     <nav class="navbar navbar-expand-lg bg-dark fixed-top navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/predict">ImageApp</a>
@@ -56,6 +60,7 @@
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            <!-- Redirects -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
@@ -79,6 +84,7 @@
     </main>
 
     <script>
+        // Light/dark mode toggling, affects other pages when extended
         (function(){
             const key = 'theme';
             const toggle = document.getElementById('theme-toggle');
@@ -96,6 +102,7 @@
                 toggle.addEventListener('click', function(){
                     const cur = document.documentElement.getAttribute('data-theme');
                     const next = cur === 'dark' ? 'light' : 'dark';
+                    // localStorage saves theme
                     localStorage.setItem(key, next);
                     applyTheme(next);
                 });
@@ -103,4 +110,5 @@
         })();
     </script>
 </body>
+
 </html>
