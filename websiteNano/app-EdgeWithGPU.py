@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 import os
 from werkzeug.utils import secure_filename
 import json
-# from google import genai
+# imports onnxruntime gpu
 import onnxruntime as ort
 import numpy as np
 import matplotlib.pyplot as plt
@@ -57,12 +57,15 @@ STATIC_PREDICTIONS_FOLDER = os.path.join(STATIC_FOLDER, "predictions")
 PREDICTIONS_FOLDER = os.path.join(app.root_path, 'data/predictions.json')
 
 mode_path = "static/best.onnx"
+# starts inference session with ONNX runtime, with its CUDA Execution Provider (GPU)
 onnx_model = ort.InferenceSession(mode_path, providers=['CUDAExecutionProvider'])
 
+# loads predictions.json file
 def load_predictions():
     with open(PREDICTIONS_FOLDER, 'r') as f:
         return json.load(f)
-    
+
+# saves predictions
 def save_predictions(entry):
     predictions = load_predictions()
     predictions.append(entry)
@@ -72,7 +75,7 @@ def save_predictions(entry):
         else:
             ordered = [entry] + predictions
         json.dump(ordered, f)
-        
+
 def filter_Detections(results, thresh = 0.5):
     # if model is trained on 1 class only
     if len(results[0]) == 5:
@@ -177,28 +180,41 @@ def rescale_back(results,img_w,img_h):
     keep, keep_confidences = NMS(boxes,confidence)
     print(np.array(keep).shape)
     return keep, keep_confidences
-    
+
+# running inference with GPU
 def predict_model(index, path):
+    # reads image
     image = cv2.imread(os.path.join(path, "base.jpg"))
     annotated_frame = image.copy()
+
+    # assign variables
     img_w, img_h = image.shape[1], image.shape[0]
+
+    # image preprocessing
     img = cv2.resize(image, (416, 416))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img.transpose(2, 0, 1)
     img = img.reshape(1, 3, 416, 416)
+    # normalising
     img = img / 255.0
     img = img.astype(np.float32)
+
+    # runs inference on onnx runtime gpu
     outputs = onnx_model.run(None, {"images": img})
     results = outputs[0]
     results = results.transpose()
+    # filter detections
     results = filter_Detections(results)
+    # scale it to correct format
     rescaled_results, confidences = rescale_back(results, img_w, img_h)
     
-    # results = model.predict(os.path.join(path, "base.jpg"))
+    # save to predictions
     save_path = os.path.join(path, "predictions")
-    # img = cv2.imread(os.path.join(path, "base.jpg"))
-    # annotated_frame = results[0].plot()
+    # classes list directly linked with dataset
     classesr = ['Apple___Apple_scab', 'Apple___Black_rot', 'Apple___Cedar_apple_rust', 'Apple___healthy', 'Blueberry___healthy','Cherry_(including_sour)___Powdery_mildew','Cherry_(including_sour)___healthy','Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot','Corn_(maize)___Common_rust_','Corn_(maize)___Northern_Leaf_Blight','Corn_(maize)___healthy','Grape___Black_rot','Grape___Esca_(Black_Measles)','Grape___Leaf_blight_(Isariopsis_Leaf_Spot)','Grape___healthy','Orange___Huanglongbing_(Citrus_greening)','Peach___Bacterial_spot','Peach___healthy','Pepper,_bell___Bacterial_spot','Pepper,_bell___healthy','Potato___Early_blight','Potato___Late_blight','Potato___healthy','Raspberry___healthy','Soybean___healthy','Squash___Powdery_mildew','Strawberry___Leaf_scorch','Strawberry___healthy','Tomato___Bacterial_spot','Tomato___Early_blight','Tomato___Late_blight','Tomato___Leaf_Mold','Tomato___Septoria_leaf_spot','Tomato___Spider_mites Two-spotted_spider_mite','Tomato___Target_Spot','Tomato___Tomato_Yellow_Leaf_Curl_Virus','Tomato___Tomato_mosaic_virus','Tomato___healthy']
+    
+    # loop through detections
+    # to draw annotated image
     for res, conf in zip(rescaled_results, confidences):
         x1,y1,x2,y2, cls_id = res
         cls_id = int(cls_id)
@@ -209,18 +225,23 @@ def predict_model(index, path):
         cv2.putText(annotated_frame, classesr[cls_id]+' '+conf,(x1,y1-17),
                     cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),1)
     
-    
+
+    # save annotated image
     cv2.imwrite(os.path.join(path, "annotated.jpg"), annotated_frame)
     data = {
         "file_url": f"/static/predictions/folder_{index}/annotated.jpg",
         "file_index": index,
         "predictions": {}
     }
+
+    # extract 3 most confident predictions
     three_most_confident_predictions = []
     three_most_confident_values = []
     three_most_confident_files = []
     image = cv2.imread(os.path.join(path, "base.jpg"))
     i = 0
+
+    # loop through detections
     for res, conf in zip(rescaled_results, confidences):
         x1,y1,x2,y2, cls_id = res
         cls_id = int(cls_id)
@@ -228,7 +249,8 @@ def predict_model(index, path):
         screenshot = image[y1:y2, x1:x2]
         print('here', screenshot.shape)
         crop_path = os.path.join(path, f"crop_{i}.jpg")
-        
+
+        # crop original image into bounding boxes
         screenshot = cv2.resize(screenshot, (256, 256))
         cv2.imwrite(crop_path, screenshot)
         crop_url = f"/static/predictions/folder_{index}/crop_{i}.jpg"
@@ -240,6 +262,8 @@ def predict_model(index, path):
             "confidence": conf,
             "crop_url": crop_url
         }
+
+        # add to three_most_confident_predictions
         if len(three_most_confident_predictions) < 3:
             three_most_confident_predictions.append(classesr[cls_id])
             three_most_confident_values.append(conf)
@@ -348,4 +372,5 @@ def index():
     return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)))
 
 if __name__ == '__main__':
+
     app.run(debug=True)
