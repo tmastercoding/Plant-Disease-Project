@@ -2,7 +2,6 @@
 
 {% block content %}
 <style>
-    /* CSS styling */
     body {
         padding-top: 70px;
         background: var(--bg-gradient);
@@ -157,10 +156,76 @@
         color: var(--danger) !important;
     }
 
+    .chart-controls { gap: .5rem; }
+    .chart-controls .btn-check { position: absolute; left: -9999px; }
+    .chart-controls label.btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: .5rem .75rem;
+        border-radius: .5rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        box-shadow: none;
+    }
+    
+    .chart-controls label.btn:hover,
+    .chart-controls label.btn:focus {
+        background: color-mix(in srgb, var(--accent) 10%, var(--card-bg) 90%);
+    }
+
+    .chart-controls label.btn span {
+        display: block;
+        font-size: .9rem;
+        line-height: 1.25;
+    }
 </style>
 
 <script>
     $(document).ready(function () {
+        classes = {
+            "Apple___Apple_scab": "Apple Scab",
+            "Apple___Black_rot": "Black Rot",
+            "Apple___Cedar_apple_rust": "Cedar Apple Rust",
+            "Apple___healthy": "Healthy Apple",
+            "Blueberry___healthy": "Healthy Blueberry",
+            "Cherry_(including_sour)___Powdery_mildew": "Powdery Mildew",
+            "Cherry_(including_sour)___healthy": "Healthy Cherry",
+            "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": "Gray Leaf Spot",
+            "Corn_(maize)___Common_rust_": "Common Rust",
+            "Corn_(maize)___Northern_Leaf_Blight": "Northern Leaf Blight",
+            "Corn_(maize)___healthy": "Healthy Corn",
+            "Grape___Black_rot": "Black Rot",
+            "Grape___Esca_(Black_Measles)": "Esca (Black Measles)",
+            "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": "Leaf Blight (Isariopsis Leaf Spot)",
+            "Grape___healthy": "Healthy Grape",
+            "Orange___Haunglongbing_(Citrus_greening)": "Huanglongbing (Citrus greening)",
+            "Peach___Bacterial_spot": "Bacterial Spot",
+            "Peach___healthy": "Healthy Peach",
+            "Pepper,_bell___Bacterial_spot": "Bacterial Spot",
+            "Pepper,_bell___healthy": "Healthy Pepper Bell",
+            "Potato___Early_blight": "Early Blight",
+            "Potato___Late_blight": "Late Blight",
+            "Potato___healthy": "Healthy Potato",
+            "Raspberry___healthy": "Healthy Raspberry",
+            "Soybean___healthy": "Healthy Soybean",
+            "Squash___Powdery_mildew": "Powdery Mildew",
+            "Strawberry___Leaf_scorch": "Leaf Scorch",
+            "Strawberry___healthy": "Healthy Strawberry",
+            "Tomato___Bacterial_spot": "Bacterial Spot",
+            "Tomato___Early_blight": "Early Blight",
+            "Tomato___Late_blight": "Late Blight",
+            "Tomato___Leaf_Mold": "Leaf Mold",
+            "Tomato___Septoria_leaf_spot": "Septoria Leaf Spot",
+            "Tomato___Spider_mites Two-spotted_spider_mite": "Two-spotted Spider Mite",
+            "Tomato___Target_Spot": "Target Spot",
+            "Tomato___Yellow_Leaf_Curl_Virus": "Yellow Leaf Curl Virus",
+            "Tomato___Tomato_mosaic_virus": "Tomato Mosaic Virus",
+            "Tomato___healthy": "Healthy Tomato"
+        };
         $(".analyse-btn").on("click", function (e) {
             e.preventDefault();
             var button = $(this);
@@ -173,7 +238,6 @@
             var resultDiv = button.closest(".card-body").find(".analysis-result.analysis-" + datumIndex + ".analysis-s-" + pIndex);
             resultDiv.html("<p>Loading analysis...</p>");
 
-            // Send the URL to /analyze/<prediction> and get analysis from generative AI server-side using AJAX
             $.ajax({
                 url: `/analyze/${prediction}`,
                 method: "POST",
@@ -181,7 +245,6 @@
                 data: JSON.stringify({ prediction: prediction }),
                 success: function (response) {
                     resultDiv.html("<h6>Analysis:</h6><p>" + response + "</p>");
-                    // Send URL to /save to save analyses to predictions.json using AJAX
                     $.ajax({
                         url: "/save",
                         method: "POST",
@@ -205,7 +268,6 @@
             });
         });
 
-        // Image preview
         var fileInput = $('input[name="img"]');
         fileInput.on('change', function () {
             var file = this.files && this.files[0];
@@ -220,6 +282,111 @@
             };
             reader.readAsDataURL(file);
         });
+
+        function enumerate(array, offset = 0, indexOnly = false) {
+            return array.map((value, index) => (indexOnly ? index + offset: [index + offset, value]));
+        }
+
+        chart = null;
+        function render_chart(additional_param = null) {
+            chart != null ? chart.destroy() : null;
+            const data = {{ data|tojson }};
+            selection = $("input[name='btnradio']:checked").index()/2;
+            var historicalTypesQuantity = [];
+                for (entry of data) {
+                    historicalTypesQuantity.push(entry.boxes_quan);
+                }
+            var historicalQuantity = [];
+            for (entry of data) {
+                var count = 0;
+                for (type of entry.types){
+                    if (type == additional_param){
+                        count += 1;
+                    }
+                }
+                historicalQuantity.push(count);
+            }
+            var historicalOccurences = [];
+            initialValue = [];
+            for (type of Object.values(classes)){
+                initialValue.push(0);
+            }
+            for (entry of data){
+                classesQuan = []
+                for (type of Object.values(classes)){
+                    classesQuan.push(0);
+                }
+                for (type of entry.types){
+                    classIndex = Object.values(classes).indexOf(type);
+                    classesQuan[classIndex] += 1;
+                }
+                historicalOccurences.push(classesQuan)
+            }
+            historicalOccurences = historicalOccurences.reduce((acc, curr) => {
+                for (let i = 0; i < curr.length; i++) {
+                    acc[i] = acc[i] + curr[i];
+                }
+                return acc;
+            }, initialValue);
+            console.log([historicalTypesQuantity, historicalQuantity, historicalOccurences][selection])
+            var ctx = document.getElementById('chart')
+            chart = new Chart(ctx, {
+                type: selection != 2? "line": "bar",
+                data: {
+                    labels: [enumerate(historicalTypesQuantity, 1, true), enumerate(historicalQuantity, 1, true), Object.values(classes)][selection? selection: 0],
+                    datasets: [{
+                        label: ["Number of types of diseases against time", `Number of detected ${additional_param} against time`, `Occurrence of ${additional_param} alongside all other diseases`][selection],
+                        data: [historicalTypesQuantity, historicalQuantity, historicalOccurences][selection],
+                        borderColor: "rgb(67, 160, 71)",
+                        backgroundColor: "rgb(67, 160, 71)",
+                        fill: false,
+                        tension: 0.1,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: "rgb(67, 160, 71)"
+                            },
+                            grid: {
+                                color: "rgba(67, 160, 71, 0.3)"
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: "rgb(67, 160, 71)"
+                            },
+                            grid: {
+                                color: "rgba(67, 160, 71, 0.3)"
+                            }
+                        }
+                    }
+                }
+            })
+        }
+
+        render_chart();
+
+        $(".carousel-control, .file-submit").on("click", function () {
+            render_chart();
+        });
+
+        $("#btnradio1").on("change", function () {
+            if (this.checked) {
+                render_chart();
+            }
+        });
+        $("#btnradio2").on("change", function () {
+            if (this.checked) {
+                render_chart("Healthy Strawberry");
+            }
+        });
+        $("#btnradio3").on("change", function () {
+            if (this.checked) {
+                render_chart("Healthy Strawberry");
+            }
+        });
     });
 </script>
 
@@ -228,30 +395,29 @@
         <form method="POST" enctype="multipart/form-data">
             <label for="img">📁 Upload an image for prediction</label>
             <input name="img" type="file" accept=".jpg,.png,.jpeg" class="form-control mb-3">
-            <button type="submit" class="btn btn-success px-4">Predict</button>
+            <button type="submit" class="btn btn-success px-4 file-submit">Predict</button>
             <img id="preview-img" src="" alt="Preview">
         </form>
     </div>
 
     <h2 class="text-center mb-4">Uploaded Predictions</h2>
 
-    <!-- Carousel that shows historical predictions -->
     {% set quan = quan %}
     {% if data and data|length > 0 %}
     <div id="predictionCarousel" class="carousel slide" data-bs-wrap="false">
         <div class="carousel-inner">
-            <!-- Loops through data, incrementing quan -->
             {% for i in range(0, data|length, quan) %}
             <div class="carousel-item {% if i == 0 %}active{% endif %}">
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
-                    <!-- Loops through datum quan times (gets quan historical predictions) -->
+
                     {% for datum in data[i:i+quan] %}
                     {% set datum_index = i + loop.index0 %}
                     <div class="card">
-                        <!-- Showing base image / annotated image -->
-                        <img src="{{ datum.file_url }}" class="card-img-top mx-auto d-block" alt="Uploaded image" style="max-width: 20rem;">
+                        <img src="{{ datum.file_url }}" class="card-img-top mx-auto d-block" alt="Uploaded image"
+                            style="max-width: 20rem;">
                         <br>
-                        <img src="{{ datum.annotated_url }}" class="card-img-top mx-auto d-block" alt="Annotated image" style="max-width: 20rem;">
+                        <img src="{{ datum.annotated_url }}" class="card-img-top mx-auto d-block" alt="Annotated image"
+                            style="max-width: 20rem;">
                         <div class="card-body text-center">
                             <h5 class="card-title">Predictions</h5>
                             <table class="table table-bordered text-center table-success">
@@ -264,7 +430,6 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <!-- Show text predictions (predicted classes) -->
                                         {% for p in datum.prediction %}
                                         <td>{{ p }}</td>
                                         {% endfor %}
@@ -272,23 +437,21 @@
                                     <tr>
                                         {% for p in range(3) %}
                                         <th>
-                                            <p>Confidence: {{ '%.2f' | format(datum.prediction_data[p]["confidence"] * 100) }}%</p>
-                                            <!-- Shows one cropped image of a diagnosed leaf per prediction -->
+                                            <p>Confidence: {{ '%.2f' | format(datum.prediction_data[p]["confidence"] *
+                                                100) }}%</p>
                                             <img src="{{ datum.prediction_data[p]['crop_url'] }}">
+                                            <br>
                                             <button
                                                 class="analyse-btn btn btn-success btn{{ datum_index }} btn-s-{{ p }}"
                                                 data-pred="{{ datum.prediction[p] }}">Analyse</button>
-                                            <!-- Saves classes as btn1, btn-s-1 to save prediction no. and which prediction out of three it is -->
                                         </th>
                                         {% endfor %}
                                     </tr>
                                 </tbody>
                             </table>
                             {% for a in range(3) %}
-                            <!-- Again, saves as analysis1 and analysis-s-1 for reasons identical to above -->
                             <div class="analysis-result text-start mt-2 analysis-{{ datum_index }} analysis-s-{{ a }}">
                                 <h3>{{ datum.prediction[a] }}</h3>
-                                <!-- Since the AI returns raw HTML, we use |save to stop the text from being enveloped in quotation marks -->
                                 {{ datum.analyses[a] | safe }}
                             </div>
                             {% endfor %}
@@ -301,20 +464,35 @@
             {% endfor %}
         </div>
 
-        <!-- Controls the carousel -->
-        <button class="carousel-control-prev" type="button" data-bs-target="#predictionCarousel" data-bs-slide="prev"
-            aria-label="Previous">
+        <button class="carousel-control-prev carousel-control" type="button" data-bs-target="#predictionCarousel"
+            data-bs-slide="prev" aria-label="Previous">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Previous</span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#predictionCarousel" data-bs-slide="next"
-            aria-label="Next">
+        <button class="carousel-control-next carousel-control" type="button" data-bs-target="#predictionCarousel"
+            data-bs-slide="next" aria-label="Next">
             <span class="carousel-control-next-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Next</span>
         </button>
     </div>
-    
-    <!-- Sets the value of quan; or how many cards are shown at once. -->
+
+    <div class="d-flex p-2 flex-row align-items-start justify-content-center gap-4">
+        <div class="btn-group-vertical d-flex p-2 chart-controls" role="group" style="max-width: 260px;">
+            <input type="radio" class="btn-check chart-btn" name="btnradio" id="btnradio1" autocomplete="off" checked>
+            <label class="btn mb-2" for="btnradio1"><span>Plot number of types of diseases against time</span></label>
+
+            <input type="radio" class="btn-check chart-btn" name="btnradio" id="btnradio2" autocomplete="off">
+            <label class="btn mb-2" for="btnradio2"><span>Plot number of detected disease against time</span></label>
+
+            <input type="radio" class="btn-check chart-btn" name="btnradio" id="btnradio3" autocomplete="off">
+            <label class="btn mb-2" for="btnradio3"><span>Plot the occurrence of a disease alongside all other diseases</span></label>
+        </div>
+
+        <div class="flex-fill d-flex align-items-center justify-content-center p-2">
+            <canvas id="chart" style="width:100%; max-width:1000px; height:360px;"></canvas>
+        </div>
+    </div>
+
     <form method="GET" action="/predict" class="mb-4 d-flex gap-2 justify-content-center align-items-center">
         <label for="carousel-quantity" class="form-label mb-0 fw-semibold">Show how many cards at once:</label>
         <input id="carousel-quantity" name="quan" type="number" min="1" value="{{ quan }}" class="form-control w-auto">
@@ -325,4 +503,3 @@
     {% endif %}
 </div>
 {% endblock %}
-
