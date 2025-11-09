@@ -225,7 +225,7 @@ def index():
                                     "prediction_data": [
                                         {
                                             "class_name": prediction[i],
-                                            "confidence": confidences[i],
+                                            "confidence": round(confidences[i], 3),
                                             "crop_url": crops[i]
                                         } for i in range(3)
                                     ],
@@ -238,3 +238,4 @@ def index():
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
