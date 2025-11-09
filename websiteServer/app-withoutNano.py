@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 import os
 from werkzeug.utils import secure_filename
 import json
-# from google import genai
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import cv2
@@ -55,14 +54,12 @@ STATIC_FOLDER = os.path.join(app.root_path, 'static')
 STATIC_PREDICTIONS_FOLDER = os.path.join(STATIC_FOLDER, "predictions")
 PREDICTIONS_FOLDER = os.path.join(app.root_path, 'data/predictions.json')
 
-model = YOLO('website/static/best.pt')
+model = YOLO('./static/best.pt')
 
-# Returns JSON of historical predictions
 def load_predictions():
     with open(PREDICTIONS_FOLDER, 'r') as f:
         return json.load(f)
-
-# Writes a new prediction to predictions.json
+    
 def save_predictions(entry):
     predictions = load_predictions()
     predictions.append(entry)
@@ -72,8 +69,7 @@ def save_predictions(entry):
         else:
             ordered = [entry] + predictions
         json.dump(ordered, f)
-
-# Main code; uses the model to predict both leaf location and type of disease
+        
 def predict_model(index, path):
     results = model.predict(os.path.join(path, "base.jpg"))
     save_path = os.path.join(path, "predictions")
@@ -89,8 +85,9 @@ def predict_model(index, path):
     three_most_confident_predictions = []
     three_most_confident_values = []
     three_most_confident_files = []
+    boxes_quan = len(boxes)
+    types_of_diseases = []
     for i in range(len(boxes)):
-        # Crops leaves from bounding boxes
         x1, y1, x2, y2 = map(int, boxes.xyxy[i])
         conf = float(boxes.conf[i])
         cls_id = int(boxes.cls[i])
@@ -106,6 +103,7 @@ def predict_model(index, path):
             "confidence": conf,
             "crop_url": crop_url
         }
+        types_of_diseases.append(classes[model.names[cls_id]])
         if len(three_most_confident_predictions) < 3:
             three_most_confident_predictions.append(classes[model.names[cls_id]])
             three_most_confident_values.append(conf)
@@ -124,11 +122,11 @@ def predict_model(index, path):
         three_most_confident_files.append("")
     while len(three_most_confident_values) < 3:
         three_most_confident_values.append(0.0)
-    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values
+    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values, boxes_quan, types_of_diseases
 
 def generate_response(result):
     if "Healthy" in result:
-        content = f"My plant is {result}. How might I prepare for potential diseases?"
+        return "Your plant is healthy! Keep up the good work!"
     else:
         content = f"My plant has {result}. Present some solutions in point form, under 60 words long. Write your response and suggestions not in markdown but in HTML surrounded by a <p>."
         client = OpenAI(api_key="sk-00f4b5e7e8514c3797af6e8db63b189b", base_url="https://api.deepseek.com")
@@ -144,7 +142,10 @@ def generate_response(result):
             stream=False
         )
         return response.choices[0].message.content
-    return "Your plant is healthy! Keep up the good work!"
+
+@app.route("/")
+def home():
+    return redirect(url_for('index'))
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -197,7 +198,7 @@ def index():
                 file_url = f"/static/predictions/folder_{predictions_length}/base.jpg"
                 save_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(save_path)
-                prediction, crops, confidences = predict_model(predictions_length, folder_path)
+                prediction, crops, confidences, boxes_quan, types = predict_model(predictions_length, folder_path)
                 save_predictions({'file_url': file_url,
                                     "annotated_url": f"/static/predictions/folder_{predictions_length}/annotated.jpg",
                                     "prediction": prediction,
@@ -208,10 +209,11 @@ def index():
                                             "crop_url": crops[i]
                                         } for i in range(3)
                                     ],
-                                    "analyses": ["", "", ""]
+                                    "analyses": ["", "", ""],
+                                    "boxes_quan": boxes_quan,
+                                    "types": types
                                 })
     return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)))
 
 if __name__ == '__main__':
-
     app.run(debug=True)
