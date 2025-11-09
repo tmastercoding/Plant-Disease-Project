@@ -2,11 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 import os
 from werkzeug.utils import secure_filename
 import json
-# from google import genai
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import cv2
 from openai import OpenAI
+import datetime
 
 classes = {
     "Apple___Apple_scab": "Apple Scab",
@@ -48,21 +48,33 @@ classes = {
     "Tomato___Tomato_mosaic_virus": "Tomato Mosaic Virus",
     "Tomato___healthy": "Healthy Tomato"
 }
+
+# Initialize Flask app
 app = Flask(__name__)
 
+# Define folders
 UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads')
 STATIC_FOLDER = os.path.join(app.root_path, 'static')
 STATIC_PREDICTIONS_FOLDER = os.path.join(STATIC_FOLDER, "predictions")
 PREDICTIONS_FOLDER = os.path.join(app.root_path, 'data/predictions.json')
 
-model = YOLO('website/static/best.pt')
+# Ensure necessary directories exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(STATIC_PREDICTIONS_FOLDER, exist_ok=True)
+os.makedirs(os.path.dirname(PREDICTIONS_FOLDER), exist_ok=True)
+if not os.path.exists(PREDICTIONS_FOLDER):
+    with open(PREDICTIONS_FOLDER, 'w') as f:
+        json.dump([], f)
+        
+# Load YOLO model
+model = YOLO('./static/best.pt')
 
-# Returns JSON of historical predictions
+# Get predictions from file
 def load_predictions():
     with open(PREDICTIONS_FOLDER, 'r') as f:
         return json.load(f)
-
-# Writes a new prediction to predictions.json
+    
+# Write new predictions to file
 def save_predictions(entry):
     predictions = load_predictions()
     predictions.append(entry)
@@ -72,14 +84,16 @@ def save_predictions(entry):
         else:
             ordered = [entry] + predictions
         json.dump(ordered, f)
-
-# Main code; uses the model to predict both leaf location and type of disease
+        
+# Main AI model prediction code
 def predict_model(index, path):
     results = model.predict(os.path.join(path, "base.jpg"))
     save_path = os.path.join(path, "predictions")
+    # Create annotated image using cv2 and save
     img = cv2.imread(os.path.join(path, "base.jpg"))
     annotated_frame = results[0].plot()
     cv2.imwrite(os.path.join(path, "annotated.jpg"), annotated_frame)
+    # Process each detected box (bounding box)
     boxes = results[0].boxes
     data = {
         "file_url": f"/static/predictions/folder_{index}/annotated.jpg",
@@ -89,8 +103,9 @@ def predict_model(index, path):
     three_most_confident_predictions = []
     three_most_confident_values = []
     three_most_confident_files = []
+    boxes_quan = len(boxes)
+    types_of_diseases = []
     for i in range(len(boxes)):
-        # Crops leaves from bounding boxes
         x1, y1, x2, y2 = map(int, boxes.xyxy[i])
         conf = float(boxes.conf[i])
         cls_id = int(boxes.cls[i])
@@ -99,6 +114,7 @@ def predict_model(index, path):
         screenshot = cv2.resize(screenshot, (256, 256))
         cv2.imwrite(crop_path, screenshot)
         crop_url = f"/static/predictions/folder_{index}/crop_{i}.jpg"
+        # Extract data from each box
         data["predictions"][f"crop_{i}"] = {
             "bounding_box": [x1, y1, x2, y2],
             "class_id": cls_id,
@@ -106,6 +122,8 @@ def predict_model(index, path):
             "confidence": conf,
             "crop_url": crop_url
         }
+        # Determine top 3 most confident predictions
+        types_of_diseases.append(classes[model.names[cls_id]])
         if len(three_most_confident_predictions) < 3:
             three_most_confident_predictions.append(classes[model.names[cls_id]])
             three_most_confident_values.append(conf)
@@ -118,17 +136,19 @@ def predict_model(index, path):
                 three_most_confident_files[min_conf_index] = crop_url
     with open(os.path.join(path, "data.json"), 'w') as f:
         json.dump(data, f)
+    # Ensure lists have exactly 3 entries
     while len(three_most_confident_predictions) < 3:
         three_most_confident_predictions.append("None")
     while len(three_most_confident_files) < 3:
         three_most_confident_files.append("")
     while len(three_most_confident_values) < 3:
         three_most_confident_values.append(0.0)
-    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values
+    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values, boxes_quan, types_of_diseases
 
+# Generate response based on prediction using OpenAI API
 def generate_response(result):
     if "Healthy" in result:
-        content = f"My plant is {result}. How might I prepare for potential diseases?"
+        return "Your plant is healthy! Keep up the good work!"
     else:
         content = f"My plant has {result}. Present some solutions in point form, under 60 words long. Write your response and suggestions not in markdown but in HTML surrounded by a <p>."
         client = OpenAI(api_key="sk-00f4b5e7e8514c3797af6e8db63b189b", base_url="https://api.deepseek.com")
@@ -144,20 +164,28 @@ def generate_response(result):
             stream=False
         )
         return response.choices[0].message.content
-    return "Your plant is healthy! Keep up the good work!"
 
+# Redirect to /index from root (server initializes on /)
+@app.route("/")
+def home():
+    return redirect(url_for('index'))
+
+# Website route for file uploading
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
+# Analyze route to get AI-generated response
 @app.route("/analyze/<pred>", methods=['GET', 'POST'])
 def predict(pred):
     return generate_response(pred)
 
+# About page route
 @app.route("/about")
 def about():
     return render_template('about.html')
 
+# Save JSON route to save analysis results
 @app.route('/save', methods=['POST'])
 def save_json():
     data = request.get_json(force=True)
@@ -179,6 +207,7 @@ def save_json():
             return jsonify({'status': 'ok'})
     return jsonify({'status': 'not_found'}), 404
 
+# Main route for predictions, home page
 @app.route('/predict', methods=['GET', 'POST'])
 def index():
     prediction = None
@@ -197,10 +226,11 @@ def index():
                 file_url = f"/static/predictions/folder_{predictions_length}/base.jpg"
                 save_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(save_path)
-                prediction, crops, confidences = predict_model(predictions_length, folder_path)
+                prediction, crops, confidences, boxes_quan, types = predict_model(predictions_length, folder_path)
                 save_predictions({'file_url': file_url,
                                     "annotated_url": f"/static/predictions/folder_{predictions_length}/annotated.jpg",
                                     "prediction": prediction,
+                                    "index": len(predictions),
                                     "prediction_data": [
                                         {
                                             "class_name": prediction[i],
@@ -208,10 +238,14 @@ def index():
                                             "crop_url": crops[i]
                                         } for i in range(3)
                                     ],
-                                    "analyses": ["", "", ""]
+                                    "analyses": ["", "", ""],
+                                    "boxes_quan": boxes_quan,
+                                    "types": types,
+                                    "date": datetime.now().strftime("%Y-%m-%d, %A"),
+                                    "time": datetime.now().strftime("%H:%M:%S")
                                 })
-    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)))
+    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)), classes = classes)
 
+# Run the app
 if __name__ == '__main__':
-
     app.run(debug=True)
