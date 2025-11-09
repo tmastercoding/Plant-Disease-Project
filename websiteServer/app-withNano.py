@@ -2,15 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 import os
 from werkzeug.utils import secure_filename
 import json
-# from google import genai
-# from ultralytics import YOLO  <-- REMOVED
 import matplotlib.pyplot as plt
 import cv2
 from openai import OpenAI
+import datetime
+# necessary libraries for NANO
 import requests
-import base64  # <-- ADDED
-import numpy as np # <-- ADDED
-import io        # <-- ADDED
+import base64 
+import numpy as np
+import io  
 
 NANO_API_URL = "" # Replace with Nano IP/infer
 
@@ -115,7 +115,7 @@ def predict_model(index, path):
             }
     except FileNotFoundError:
         print(f"Error: Could not find file {base_image_path}")
-        return [], [], []
+        return [], [], [], 0, []
 
     # 2. Send the request to the Jetson Nano
     try:
@@ -129,16 +129,16 @@ def predict_model(index, path):
 
     except requests.exceptions.ConnectionError:
         print("Error: Could not connect to the Jetson Nano.")
-        return [], [], []
+        return [], [], [], 0, []
     except requests.exceptions.Timeout:
         print("Error: Inference request to Nano timed out.")
-        return [], [], []
+        return [], [], [], 0, []
     except requests.exceptions.RequestException as e:
         print(f"Error sending request to Nano: {e}")
-        return [], [], []
+        return [], [], [], 0, []
     except json.JSONDecodeError:
         print("Error: Could not decode JSON response from Nano.")
-        return [], [], []
+        return [], [], [], 0, []
 
     # 3. Process the Nano's response (this must match your Nano's API output)
     
@@ -158,7 +158,7 @@ def predict_model(index, path):
 
     if 'annotated_image' not in nano_data or 'all_detections' not in nano_data:
         print("Error: Nano response is missing required keys.")
-        return [], [], []
+        return [], [], [], 0, []
 
     # 4. Save the annotated image
     annotated_save_path = os.path.join(path, "annotated.jpg")
@@ -173,9 +173,9 @@ def predict_model(index, path):
     three_most_confident_predictions = []
     three_most_confident_values = []
     three_most_confident_files = []
+    types_of_diseases = []
 
-    detections = nano_data['all_detections']
-    
+    detections = nano_data['all_detections']    
     # Sort detections by confidence (highest first)
     detections.sort(key=lambda x: x['confidence'], reverse=True)
 
@@ -198,7 +198,7 @@ def predict_model(index, path):
             "confidence": conf,
             "crop_url": crop_url
         }
-        
+        types_of_diseases.append(class_name)
         # Populate the top 3 predictions
         if i < 3:
             three_most_confident_predictions.append(class_name)
@@ -217,14 +217,14 @@ def predict_model(index, path):
     while len(three_most_confident_values) < 3:
         three_most_confident_values.append(0.0)
 
-    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values
+    return three_most_confident_predictions, three_most_confident_files, three_most_confident_values, len(detections), types_of_diseases
 
 # --- ^^^ THIS IS THE MODIFIED FUNCTION ^^^ ---
 
 
 def generate_response(result):
     if "Healthy" in result:
-        content = f"My plant is {result}. How might I prepare for potential diseases?"
+        return "Your plant is healthy! Keep up the good work!"
     else:
         content = f"My plant has {result}. Present some solutions in point form, under 60 words long. Write your response and suggestions not in markdown but in HTML surrounded by a <p>."
         client = OpenAI(api_key="sk-00f4b5e7e8514c3797af6e8db63b189b", base_url="https://api.deepseek.com")
@@ -240,7 +240,11 @@ def generate_response(result):
             stream=False
         )
         return response.choices[0].message.content
-    return "Your plant is healthy! Keep up the good work!"
+    
+# Redirect to /index from root (server initializes on /)
+@app.route("/")
+def home():
+    return redirect(url_for('index'))
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -301,28 +305,31 @@ def index():
                 file_url = f"/static/predictions/folder_{predictions_length}/base.jpg"
                 
                 # *** This function now calls the Nano ***
-                prediction, crops, confidences = predict_model(predictions_length, folder_path)
+                prediction, crops, confidences, boxes_quan, types = predict_model(predictions_length, folder_path)
                 
                 # Check if predict_model failed (e.g., Nano connection error)
                 if not prediction:
                     # Handle the error, maybe render an error message
                     print("Prediction failed, likely a Nano communication issue.")
                     # You might want to pass an error to the template
-                    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)), error="Failed to process image. Could not connect to inference server.")
+                    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)), classes = classes, error="Failed to process image. Could not connect to inference server.")
 
                 save_predictions({'file_url': file_url,
                                     "annotated_url": f"/static/predictions/folder_{predictions_length}/annotated.jpg",
                                     "prediction": prediction,
+                                    "index": len(predictions),
                                     "prediction_data": [
                                         {
                                             "class_name": prediction[i],
-                                            "confidence": confidences[i],
+                                            "confidence": round(confidences[i], 3),
                                             "crop_url": crops[i]
                                         } for i in range(3)
                                     ],
-                                    "analyses": ["", "", ""]
+                                    "analyses": ["", "", ""],
+                                    "boxes_quan": boxes_quan,
+                                    "types": types
                                 })
-    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)))
+    return render_template('predict.html', data=load_predictions(), quan=int(request.args.get("quan", 1)), classes = classes)
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=8000) # Recommend specifying host and port
