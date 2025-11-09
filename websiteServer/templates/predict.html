@@ -11,7 +11,8 @@
 	.centered-content {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
+		overflow-x: visible;
+		align-items: stretch;
 		gap: 2rem;
 	}
 
@@ -427,6 +428,8 @@
 					]
 				},
 				options: {
+					maintainAspectRatio: false,
+					responsive: true,
 					scales: {
 						x: {
 							ticks: {
@@ -574,7 +577,7 @@
 	</div>
 	<!-- Chart section -->
 	<div class="d-flex p-2 flex-row align-items-start justify-content-center gap-4">
-		<div class="btn-group-vertical d-flex p-2 chart-controls" role="group" style="max-width: 260px">
+		<div class="btn-group-vertical d-flex p-2 chart-controls order-2 order-md-1" role="group" style="max-width: 260px">
 			<input type="radio" class="btn-check chart-btn" name="btnradio" id="btnradio1" autocomplete="off" checked />
 			<label class="btn mb-2" for="btnradio1"><span>Plot number of types of diseases against time</span></label>
 			<input type="radio" class="btn-check chart-btn" name="btnradio" id="btnradio2" autocomplete="off" />
@@ -611,42 +614,44 @@
 		</div>
 	</div>
 	<!-- DataTables section -->
-	<table id="table" class="display">
-		<thead>
-			<th></th>
-			<th>Prediction #</th>
-			<th>First Prediction</th>
-			<th>Second Prediction</th>
-			<th>Third Prediction</th>
-			<th>Confidence #1</th>
-			<th>Confidence #2</th>
-			<th>Confidence #3</th>
-			<th>Date of Prediction</th>
-			<th>Time of Prediction</th>
-			<th>All Types</th>
-			<th>Base Image URL</th>
-			<th>Annotated Image URL</th>
-		</thead>
-		<tbody>
-			{% for datum in data %}
-			<tr>
-				<td></td>
-				<td>{{ datum.data }}</td>
-				{% for i in range(3) %}
-				<td>{{ datum.prediction_data[i]["class_name"] }}</td>
+	<div style="overflow: scroll;" class="chart-container">
+		<table id="table" class="display" style="width: 100%">
+			<thead>
+				<th></th>
+				<th>Prediction #</th>
+				<th>First Prediction</th>
+				<th>Second Prediction</th>
+				<th>Third Prediction</th>
+				<th>Confidence #1</th>
+				<th>Confidence #2</th>
+				<th>Confidence #3</th>
+				<th>Date of Prediction</th>
+				<th>Time of Prediction</th>
+				<th>All Types</th>
+				<th>Base Image URL</th>
+				<th>Annotated Image URL</th>
+			</thead>
+			<tbody>
+				{% for datum in data %}
+				<tr>
+					<td></td>
+					<td>{{ datum.data }}</td>
+					{% for i in range(3) %}
+					<td>{{ datum.prediction_data[i]["class_name"] }}</td>
+					{% endfor %}
+					{% for i in range(3) %}
+					<td>{{ datum.prediction_data[i]["confidence"] }}</td>
+					{% endfor %}
+					<td>{{ datum.date }}</td>
+					<td>{{ datum.time }}</td>
+					<td>{{ ", ".join(datum.types) }}</td>
+					<td>{{ datum.file_url }}</td>
+					<td>{{ datum.annotated_url }}</td>
+				</tr>
 				{% endfor %}
-				{% for i in range(3) %}
-				<td>{{ datum.prediction_data[i]["confidence"] }}</td>
-				{% endfor %}
-				<td>{{ datum.date }}</td>
-				<td>{{ datum.time }}</td>
-				<td>{{ ", ".join(datum.types) }}</td>
-				<td>{{ datum.file_url }}</td>
-				<td>{{ datum.annotated_url }}</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
+			</tbody>
+		</table>
+	</div>
 	{% else %}
 	<p class="text-center text-muted">
 		No predictions yet. Upload an image above to get started!
