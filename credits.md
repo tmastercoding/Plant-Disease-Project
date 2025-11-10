@@ -1,0 +1,11 @@
+# Credits:
+- Github Repo - Tay Oh (tmastercoding)
+- Prototyping with Keras - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
+- Attemps with PlantDoc - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
+- Synthetic Dataset - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
+- YOLO Training and Testing - Tay Oh (tmastercoding)
+- Website without Nano - Harry Lam (adyinae1128)
+- About.html - Gabriel Tsang
+- Website with Nano - Tay Oh(tmastercoding)
+- Nano Side API code - Tay Oh(tmastercoding)
+- Nano Side YOLO inference - Tay Oh(tmastercoding)
