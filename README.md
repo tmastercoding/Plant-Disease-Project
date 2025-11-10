@@ -14,6 +14,28 @@ A random background is selected. Random amount of leaves are selected from the l
 
 These artificial images are then compiled into a new dataset with specified file directory
 
+### Backgrounds (folder)
+
+Contains 20 sample backgrounds used for the synthetic dataset (could be replaced with other ones)
+
+### Website Server
+
+Contains two python files and a pretrained model
+
+app-withNano: The website is hosted on your computer, processing is done on the jetson nano
+
+app-withoutNano: The website is hosted on your computer, processing is done on the computer
+
+### websiteNano
+
+Contains three python bfiles and a pretrained model
+
+app-EdgeWithCPU: Processing is done on the edge with the CPU on your jetson nano
+
+app-EdgeWithGPU: Processing is done on the edge with the GPU on your jetson nano
+
+app-EdgeWithServer: A website server is also hosted on the nano
+
 ### Synthetic plant dataset (folder)
 
 A sample synthetic dataset that was created from the SyntheticDatasetMaking.ipynb file, containing 10,000 labeled images in YOLO format.
