@@ -23,7 +23,7 @@ A sample synthetic dataset that was created from the SyntheticDatasetMaking.ipyn
 
 Contains 20 sample backgrounds used for the synthetic dataset (could be replaced with other ones)
 
-## Wesbite
+## Website
 ### [Website Server](https://github.com/tmastercoding/Plant-Disease-Project/tree/main/websiteServer)
 
 Contains two python files and a pretrained model
