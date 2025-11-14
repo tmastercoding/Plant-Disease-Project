@@ -54,7 +54,7 @@ Runs is a folder containing images of graphs and data of our YOLOv8 training. It
 ## Credits:
 - Github Repo - Tay Oh (tmastercoding)
 - Prototyping with Keras - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
-- Attemps with PlantDoc - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
+- Attempts with PlantDoc - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
 - Synthetic Dataset - Tay Oh (tmastercoding), Braden Lau (Koogoshau)
 - YOLO Training and Testing - Tay Oh (tmastercoding)
 - Website without Nano - Harry Lam (adyinae1128)
