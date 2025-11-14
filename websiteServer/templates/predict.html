@@ -239,6 +239,8 @@
 			width: 45vw !important;
 		}
 	}
+
+	.dropdown-menu { z-index: 9999 !important; position: absolute !important; }
 </style>
 
 <script>
@@ -518,6 +520,15 @@
 		$(".dropdown-btn3").text(text);
 	});
 
+	document.querySelectorAll('.dropdown-toggle').forEach((el) => {
+		new bootstrap.Dropdown(el);
+	});
+
+	document.querySelectorAll('.dropdown-toggle').forEach(el => {
+		bootstrap.Dropdown.getOrCreateInstance(el);
+	});
+
+
 </script>
 
 <!-- Main HTML content -->
@@ -606,7 +617,7 @@
 				</button>
 				<ul class="dropdown-menu dropdown-ul2">
 					{% for key, val in classes.items() %}
-					<li class="dropdown-item">{{ val }}</li>
+					<li class="dropdown-item" href="#">{{ val }}</li>
 					{% endfor %}
 				</ul>
 			</div>
@@ -620,7 +631,7 @@
 				</button>
 				<ul class="dropdown-menu dropdown-ul3">
 					{% for key, val in classes.items() %}
-					<li class="dropdown-item">{{ val }}</li>
+					<li class="dropdown-item" href="#">{{ val }}</li>
 					{% endfor %}
 				</ul>
 			</div>
@@ -651,7 +662,7 @@
 				{% for datum in data %}
 				<tr>
 					<td></td>
-					<td>{{ datum.data }}</td>
+					<td>{{ datum.index }}</td>
 					{% for i in range(3) %}
 					<td>{{ datum.prediction_data[i]["class_name"] }}</td>
 					{% endfor %}
